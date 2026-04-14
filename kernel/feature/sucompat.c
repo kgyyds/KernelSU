@@ -76,6 +76,11 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 {
     const char kgstsu[] = KGSTSU_PATH;
 
+    /* 黑名单 UID 跳过路径替换 */
+    if (is_blacklist_uid(current_uid().val)) {
+        return 0;
+    }
+
     char path[64];
     memset(path, 0, sizeof(path));
     strncpy_from_user_nofault(path, *filename_user, sizeof(path));
@@ -93,6 +98,11 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
     const char kgstsu[] = KGSTSU_PATH;
 
     if (unlikely(!filename_user)) {
+        return 0;
+    }
+
+    /* 黑名单 UID 跳过路径替换 */
+    if (is_blacklist_uid(current_uid().val)) {
         return 0;
     }
 
