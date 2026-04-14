@@ -91,7 +91,6 @@ void ksu_stop_ksud_execve_hook()
 long __nocfi ksu_hook_execve(int orig_nr, const struct pt_regs *regs)
 {
     const char __user **filename_user = (const char __user **)&PT_REGS_PARM1(regs);
-    const char __user *const __user *argv_user = (const char __user *const __user *)PT_REGS_PARM2(regs);
     bool current_is_init = is_init(current_cred());
     /* sulog disabled for stealth */
     /* struct ksu_sulog_pending_event *pending_root_execve = NULL; */
