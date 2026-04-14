@@ -88,7 +88,7 @@ void ksu_stop_ksud_execve_hook()
     static_branch_disable(&ksud_execve_key);
 }
 
-long __nocfi ksu_hook_execve(int orig_nr, struct pt_regs *regs)
+long __nocfi ksu_hook_execve(int orig_nr, const struct pt_regs *regs)
 {
     const char __user **filename_user = (const char __user **)&PT_REGS_PARM1(regs);
     const char __user *const __user *argv_user = (const char __user *const __user *)PT_REGS_PARM2(regs);

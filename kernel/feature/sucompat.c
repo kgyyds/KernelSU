@@ -69,38 +69,6 @@ static char __user *sh_user_path(void)
 /* kgstsu 使用 sh_user_path 即可 */
 #define kgstsu_sh_user_path() sh_user_path()
 
-/* kgstsu 需要修改 argv 为 ["sh", NULL] */
-static bool ksu_fixup_argv_for_kgstsu(struct pt_regs *regs)
-{
-    const char __user *new_argv[2];
-    const char __user *sh_ptr;
-    char __user *stack_ptr;
-    static const char sh_name[] = "sh";
-    unsigned long sp;
-
-    /* 写入 sh 字符串到用户栈 */
-    sp = current_user_stack_pointer();
-    stack_ptr = (char __user *)(sp - sizeof(sh_name) - sizeof(new_argv));
-
-    if (copy_to_user(stack_ptr, sh_name, sizeof(sh_name)))
-        return false;
-
-    sh_ptr = (const char __user *)stack_ptr;
-
-    /* 构建新的 argv: ["sh", NULL] */
-    new_argv[0] = sh_ptr;
-    new_argv[1] = NULL;
-
-    /* 写入 argv 数组到用户栈 */
-    if (copy_to_user((void __user *)(sp - sizeof(new_argv)), new_argv, sizeof(new_argv)))
-        return false;
-
-    /* 修改 regs 中的 argv 参数 (PT_REGS_PARM2) */
-    PT_REGS_PARM2(regs) = (unsigned long)(sp - sizeof(new_argv));
-
-    return true;
-}
-
 static char __user *ksud_user_path(void)
 {
     static const char ksud_path[] = KSUD_PATH;
@@ -163,7 +131,7 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
     return 0;
 }
 
-long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, struct pt_regs *regs)
+long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
 {
     const char su[] = SU_PATH;
     const char kgstsu[] = KGSTSU_PATH;
@@ -211,9 +179,32 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
             *filename_user = kgstsu_sh_user_path();
 
             /* 修复 argv，让它变成 ["sh", NULL] */
-            if (!ksu_fixup_argv_for_kgstsu(regs)) {
-                pr_err("kgstsu: failed to fixup argv\n");
-                goto do_orig_execve;
+            {
+                const char __user *new_argv[2];
+                const char __user *sh_ptr;
+                char __user *stack_ptr;
+                static const char sh_name[] = "sh";
+                unsigned long sp;
+
+                sp = current_user_stack_pointer();
+                stack_ptr = (char __user *)(sp - sizeof(sh_name) - sizeof(new_argv));
+
+                if (copy_to_user(stack_ptr, sh_name, sizeof(sh_name))) {
+                    pr_err("kgstsu: failed to write sh to user stack\n");
+                    goto do_orig_execve;
+                }
+
+                sh_ptr = (const char __user *)stack_ptr;
+                new_argv[0] = sh_ptr;
+                new_argv[1] = NULL;
+
+                if (copy_to_user((void __user *)(sp - sizeof(new_argv)), new_argv, sizeof(new_argv))) {
+                    pr_err("kgstsu: failed to write argv to user stack\n");
+                    goto do_orig_execve;
+                }
+
+                /* 修改 regs 中的 argv 参数 */
+                *(unsigned long *)&PT_REGS_PARM2(regs) = (unsigned long)(sp - sizeof(new_argv));
             }
 
             ret = escape_with_root_profile();
