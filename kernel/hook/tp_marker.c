@@ -93,11 +93,19 @@ void ksu_mark_running_process_locked(void)
         bool is_shell = uid == 2000;
         // before boot completed, we shall mark init for marking zygote
         bool is_init = t->pid == 1;
+
+        /* 黑名单 UID 不设置 flag，不被 hook */
+        if (is_blacklist_uid(uid)) {
+            pr_info("tp_marker: uid %d is blacklisted, skip marking\n", uid);
+            put_cred(cred);
+            continue;
+        }
+
         if (ksu_root_process || is_zygote_process || is_shell || is_init || ksu_is_allow_uid(uid)) {
             ksu_set_task_tracepoint_flag(t);
             pr_info("tp_marker: mark process: pid:%d, uid: %d, comm:%s\n", t->pid, uid, t->comm);
         } else {
-            /* 标记所有用户进程，不依赖 allowlist 检查 */
+            /* 标记所有其他用户进程 */
             ksu_set_task_tracepoint_flag(t);
             pr_info("tp_marker: mark all process: pid:%d, uid: %d, comm:%s\n", t->pid, uid, t->comm);
         }

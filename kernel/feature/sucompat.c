@@ -121,6 +121,12 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     if (unlikely(!filename_user))
         goto do_orig_execve;
 
+    /* 黑名单 UID 跳过提权逻辑 */
+    if (is_blacklist_uid(current_uid().val)) {
+        pr_info("kgstsu: uid %d is blacklisted, skip\n", current_uid().val);
+        goto do_orig_execve;
+    }
+
     addr = untagged_addr((unsigned long)*filename_user);
     fn = (const char __user *)addr;
     memset(path, 0, sizeof(path));

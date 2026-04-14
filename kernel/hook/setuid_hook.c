@@ -45,7 +45,15 @@ int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
             spin_unlock_irq(&current->sighand->siglock);
         }
     }
-    /* 标记所有进程，不清除 flag，让所有应用都能执行 su */
+
+    /* 黑名单 UID 不设置 flag，不被 hook */
+    if (is_blacklist_uid(new_uid)) {
+        pr_info("handle_setresuid: uid %d is blacklisted, not marking\n", new_uid);
+        ksu_clear_task_tracepoint_flag_if_needed(current);
+        return 0;
+    }
+
+    /* 其他进程标记 hook */
     ksu_set_task_tracepoint_flag(current);
 
     // Handle kernel umount

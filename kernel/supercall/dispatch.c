@@ -648,6 +648,57 @@ static int do_get_sulog_fd(void __user *arg)
     return ksu_install_sulog_fd();
 }
 
+static int do_blacklist_add(void __user *arg)
+{
+    struct ksu_blacklist_cmd cmd;
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd))) {
+        pr_err("blacklist_add: copy_from_user failed\n");
+        return -EFAULT;
+    }
+
+    pr_info("blacklist_add: adding uid %d\n", cmd.uid);
+    return ksu_blacklist_add(cmd.uid);
+}
+
+static int do_blacklist_remove(void __user *arg)
+{
+    struct ksu_blacklist_cmd cmd;
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd))) {
+        pr_err("blacklist_remove: copy_from_user failed\n");
+        return -EFAULT;
+    }
+
+    pr_info("blacklist_remove: removing uid %d\n", cmd.uid);
+    return ksu_blacklist_remove(cmd.uid);
+}
+
+static int do_blacklist_get(void __user *arg)
+{
+    struct ksu_blacklist_get_cmd cmd;
+    int ret;
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd))) {
+        pr_err("blacklist_get: copy_from_user failed\n");
+        return -EFAULT;
+    }
+
+    ret = ksu_blacklist_get(cmd.uids, cmd.count);
+    if (ret < 0) {
+        pr_err("blacklist_get: failed to get blacklist\n");
+        return ret;
+    }
+
+    cmd.count = ret;
+    if (copy_to_user(arg, &cmd, sizeof(cmd))) {
+        pr_err("blacklist_get: copy_to_user failed\n");
+        return -EFAULT;
+    }
+
+    return 0;
+}
+
 // IOCTL handlers mapping table
 // clang-format off
 static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
@@ -781,6 +832,24 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_GET_SULOG_FD,
         .name = "GET_SULOG_FD",
         .handler = do_get_sulog_fd,
+        .perm_check = only_root
+    },
+    {
+        .cmd = KSU_IOCTL_BLACKLIST_ADD,
+        .name = "BLACKLIST_ADD",
+        .handler = do_blacklist_add,
+        .perm_check = only_root
+    },
+    {
+        .cmd = KSU_IOCTL_BLACKLIST_REMOVE,
+        .name = "BLACKLIST_REMOVE",
+        .handler = do_blacklist_remove,
+        .perm_check = only_root
+    },
+    {
+        .cmd = KSU_IOCTL_BLACKLIST_GET,
+        .name = "BLACKLIST_GET",
+        .handler = do_blacklist_get,
         .perm_check = only_root
     },
     {

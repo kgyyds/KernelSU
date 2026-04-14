@@ -134,6 +134,15 @@ struct ksu_get_sulog_fd_cmd {
     __u32 flags; /* Input: reserved for future use, must be 0 */
 };
 
+struct ksu_blacklist_cmd {
+    __u32 uid; /* Input: target UID to add/remove */
+};
+
+struct ksu_blacklist_get_cmd {
+    __u32 count; /* Input / Output: number of UIDs in array */
+    __u32 uids[64]; /* Output: array of blacklisted UIDs */
+};
+
 static const __u8 KSU_UMOUNT_WIPE = 0; /* ignore everything and wipe list */
 static const __u8 KSU_UMOUNT_ADD = 1; /* add entry (path + flags) */
 static const __u8 KSU_UMOUNT_DEL = 2; /* delete entry, strcmp */
@@ -163,5 +172,8 @@ static const __u32 KSU_IOCTL_NUKE_EXT4_SYSFS = _IOC(_IOC_WRITE, 'K', 17, 0);
 static const __u32 KSU_IOCTL_ADD_TRY_UMOUNT = _IOC(_IOC_WRITE, 'K', 18, 0);
 static const __u32 KSU_IOCTL_SET_INIT_PGRP = _IO('K', 19);
 static const __u32 KSU_IOCTL_GET_SULOG_FD = _IOW('K', 20, struct ksu_get_sulog_fd_cmd);
+static const __u32 KSU_IOCTL_BLACKLIST_ADD = _IOW('K', 21, struct ksu_blacklist_cmd);
+static const __u32 KSU_IOCTL_BLACKLIST_REMOVE = _IOW('K', 22, struct ksu_blacklist_cmd);
+static const __u32 KSU_IOCTL_BLACKLIST_GET = _IOWR('K', 23, struct ksu_blacklist_get_cmd);
 
 #endif

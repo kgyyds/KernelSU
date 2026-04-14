@@ -39,6 +39,14 @@ int ksu_set_app_profile(struct app_profile *);
 bool ksu_uid_should_umount(uid_t uid);
 void ksu_get_root_profile(uid_t uid, struct root_profile *);
 
+// Blacklist functions
+#define KSU_BLACKLIST_MAX 64
+
+bool is_blacklist_uid(uid_t uid);
+int ksu_blacklist_add(uid_t uid);
+int ksu_blacklist_remove(uid_t uid);
+int ksu_blacklist_get(uid_t *uids, int max);
+
 static inline bool is_appuid(uid_t uid)
 {
     uid_t appid = uid % PER_USER_RANGE;

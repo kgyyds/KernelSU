@@ -38,6 +38,11 @@ static struct non_root_profile default_non_root_profile;
 static int allow_list_arr[PAGE_SIZE / sizeof(int)] __read_mostly __aligned(PAGE_SIZE);
 static int allow_list_pointer __read_mostly = 0;
 
+// Blacklist storage
+static uid_t blacklist_uids[KSU_BLACKLIST_MAX];
+static int blacklist_count = 0;
+static DEFINE_SPINLOCK(blacklist_lock);
+
 static void remove_uid_from_arr(uid_t uid)
 {
     int i;
@@ -320,6 +325,85 @@ bool __ksu_is_allow_uid_for_current(uid_t uid)
         return is_ksu_domain();
     }
     return __ksu_is_allow_uid(uid);
+}
+
+// Blacklist functions
+bool is_blacklist_uid(uid_t uid)
+{
+    int i;
+    unsigned long flags;
+    bool found = false;
+
+    spin_lock_irqsave(&blacklist_lock, flags);
+    for (i = 0; i < blacklist_count; i++) {
+        if (blacklist_uids[i] == uid) {
+            found = true;
+            break;
+        }
+    }
+    spin_unlock_irqrestore(&blacklist_lock, flags);
+
+    return found;
+}
+
+int ksu_blacklist_add(uid_t uid)
+{
+    unsigned long flags;
+
+    // Check if already in blacklist
+    if (is_blacklist_uid(uid))
+        return 0;
+
+    spin_lock_irqsave(&blacklist_lock, flags);
+    if (blacklist_count < KSU_BLACKLIST_MAX) {
+        blacklist_uids[blacklist_count++] = uid;
+        pr_info("ksu: added uid %d to blacklist\n", uid);
+    } else {
+        pr_err("ksu: blacklist is full!\n");
+        spin_unlock_irqrestore(&blacklist_lock, flags);
+        return -ENOSPC;
+    }
+    spin_unlock_irqrestore(&blacklist_lock, flags);
+
+    return 0;
+}
+
+int ksu_blacklist_remove(uid_t uid)
+{
+    int i;
+    unsigned long flags;
+
+    spin_lock_irqsave(&blacklist_lock, flags);
+    for (i = 0; i < blacklist_count; i++) {
+        if (blacklist_uids[i] == uid) {
+            // Remove by shifting
+            if (i < blacklist_count - 1) {
+                memmove(&blacklist_uids[i], &blacklist_uids[i + 1],
+                        (blacklist_count - 1 - i) * sizeof(uid_t));
+            }
+            blacklist_count--;
+            pr_info("ksu: removed uid %d from blacklist\n", uid);
+            break;
+        }
+    }
+    spin_unlock_irqrestore(&blacklist_lock, flags);
+
+    return 0;
+}
+
+int ksu_blacklist_get(uid_t *uids, int max)
+{
+    int i, count;
+    unsigned long flags;
+
+    spin_lock_irqsave(&blacklist_lock, flags);
+    count = blacklist_count < max ? blacklist_count : max;
+    for (i = 0; i < count; i++) {
+        uids[i] = blacklist_uids[i];
+    }
+    spin_unlock_irqrestore(&blacklist_lock, flags);
+
+    return count;
 }
 
 bool ksu_uid_should_umount(uid_t uid)
