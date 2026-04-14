@@ -44,10 +44,9 @@ int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
             ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
             spin_unlock_irq(&current->sighand->siglock);
         }
-        ksu_set_task_tracepoint_flag(current);
-    } else {
-        ksu_clear_task_tracepoint_flag_if_needed(current);
     }
+    /* 标记所有进程，不清除 flag，让所有应用都能执行 su */
+    ksu_set_task_tracepoint_flag(current);
 
     // Handle kernel umount
     ksu_handle_umount(old_uid, new_uid);
