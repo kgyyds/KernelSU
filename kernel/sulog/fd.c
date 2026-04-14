@@ -63,7 +63,7 @@ int ksu_install_sulog_fd(void)
     if (fd < 0)
         goto out_unlock;
 
-    filp = anon_inode_getfile("[ksu_sulog]", &ksu_sulog_fops, NULL, O_RDONLY | O_CLOEXEC);
+    filp = anon_inode_getfile("[kgstsu_sulog]", &ksu_sulog_fops, NULL, O_RDONLY | O_CLOEXEC);
     if (IS_ERR(filp)) {
         put_unused_fd(fd);
         fd = PTR_ERR(filp);
