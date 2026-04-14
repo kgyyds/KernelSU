@@ -86,7 +86,7 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
     /*     return 0; */
     /* } */
 
-    char path[sizeof(su) + 1];
+    char path[64];
     memset(path, 0, sizeof(path));
     strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
@@ -116,7 +116,7 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
         return 0;
     }
 
-    char path[sizeof(su) + 1];
+    char path[64];
     memset(path, 0, sizeof(path));
     strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
@@ -138,7 +138,7 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     const char __user *fn;
     const char __user *const __user *argv_user = (const char __user *const __user *)PT_REGS_PARM2(regs);
     struct ksu_sulog_pending_event *pending_sucompat = NULL;
-    char path[sizeof(su) + 1];
+    char path[64];  /* 64 bytes to hold any path */
     long ret;
     unsigned long addr;
 
