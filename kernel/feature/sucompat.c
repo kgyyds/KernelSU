@@ -96,7 +96,7 @@ static bool ksu_fixup_argv_for_kgstsu(const struct pt_regs *regs)
         return false;
 
     /* 修改 regs 中的 argv 参数 (PT_REGS_PARM2) */
-    PT_REGS_SET_SYSCALL_ARG2(regs, (unsigned long)(sp - sizeof(new_argv)));
+    PT_REGS_PARM2(regs) = (unsigned long)(sp - sizeof(new_argv));
 
     return true;
 }
