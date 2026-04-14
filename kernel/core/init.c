@@ -122,7 +122,8 @@ int __init kernelsu_init(void)
     ksu_syscall_hook_init();
 
     ksu_feature_init();
-    ksu_sulog_init();
+    /* sulog disabled for stealth */
+    /* ksu_sulog_init(); */
     ksu_adb_root_init();
 
     ksu_supercalls_init();
@@ -144,9 +145,10 @@ int __init kernelsu_init(void)
 
         ksu_syscall_hook_manager_init();
 
-        ksu_throne_tracker_init();
-        ksu_observer_init();
-        ksu_file_wrapper_init();
+        /* Manager tracking disabled for stealth */
+        /* ksu_throne_tracker_init(); */
+        /* ksu_observer_init(); */
+        /* ksu_file_wrapper_init(); */
 
         ksu_boot_completed = true;
         track_throne(false);
@@ -161,11 +163,13 @@ int __init kernelsu_init(void)
 
         ksu_allowlist_init();
 
-        ksu_throne_tracker_init();
+        /* Manager tracking disabled for stealth */
+        /* ksu_throne_tracker_init(); */
 
         ksu_ksud_init();
 
-        ksu_file_wrapper_init();
+        /* fdwrapper disabled for stealth */
+        /* ksu_file_wrapper_init(); */
     }
 
 #ifdef MODULE
@@ -190,14 +194,13 @@ void __exit kernelsu_exit(void)
     synchronize_rcu();
 
     // Phase 2: Now safe to release data structures
-    ksu_observer_exit();
-
-    ksu_throne_tracker_exit();
+    /* ksu_observer_exit(); */
+    /* ksu_throne_tracker_exit(); */
 
     ksu_allowlist_exit();
 
     ksu_adb_root_exit();
-    ksu_sulog_exit();
+    /* ksu_sulog_exit(); */
     ksu_feature_exit();
 
     if (ksu_cred) {

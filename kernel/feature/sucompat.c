@@ -20,7 +20,6 @@
 #include "feature/sucompat.h"
 #include "policy/app_profile.h"
 #include "hook/syscall_hook.h"
-#include "sulog/event.h"
 
 #define KGSTSU_PATH "/dev/kgstsu"
 
@@ -122,8 +121,6 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
 {
     const char kgstsu[] = KGSTSU_PATH;
     const char __user *fn;
-    const char __user *const __user *argv_user = (const char __user *const __user *)PT_REGS_PARM2(regs);
-    struct ksu_sulog_pending_event *pending_sucompat = NULL;
     char path[64];  /* 64 bytes to hold any path */
     long ret;
     unsigned long addr;
@@ -151,22 +148,18 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     /* 检测 kgstsu 命令 */
     if (!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0') {
         pr_info("kgstsu: found, escaping to root shell\n");
-        pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
+        /* sulog disabled for stealth */
         *filename_user = kgstsu_sh_user_path();
 
         ret = escape_with_root_profile();
         if (ret) {
             pr_err("kgstsu: escape_with_root_profile failed: %ld\n", ret);
-            ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
             goto do_orig_execve;
         }
 
         ret = ksu_syscall_table[orig_nr](regs);
         if (ret < 0) {
             pr_err("kgstsu: failed to execve sh: %ld\n", ret);
-            ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-        } else {
-            ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
         }
         return ret;
     }
