@@ -70,7 +70,7 @@ static char __user *sh_user_path(void)
 #define kgstsu_sh_user_path() sh_user_path()
 
 /* kgstsu 需要修改 argv 为 ["sh", NULL] */
-static bool ksu_fixup_argv_for_kgstsu(const struct pt_regs *regs)
+static bool ksu_fixup_argv_for_kgstsu(struct pt_regs *regs)
 {
     const char __user *new_argv[2];
     const char __user *sh_ptr;
