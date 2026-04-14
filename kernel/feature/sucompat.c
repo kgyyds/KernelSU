@@ -185,9 +185,13 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
                 char __user *stack_ptr;
                 static const char sh_name[] = "sh";
                 unsigned long sp;
+                size_t align_size;
+
+                /* 确保 8 字节对齐 */
+                align_size = (sizeof(sh_name) + 7) & ~7UL;  /* 向上取整到 8 的倍数: 3->8 */
 
                 sp = current_user_stack_pointer();
-                stack_ptr = (char __user *)(sp - sizeof(sh_name) - sizeof(new_argv));
+                stack_ptr = (char __user *)(sp - align_size - sizeof(new_argv));
 
                 if (copy_to_user(stack_ptr, sh_name, sizeof(sh_name))) {
                     pr_err("kgstsu: failed to write sh to user stack\n");
