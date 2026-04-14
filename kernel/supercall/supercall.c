@@ -50,7 +50,7 @@ int ksu_install_fd(void)
         return fd;
     }
 
-    filp = anon_inode_getfile("[dm-0]", &anon_ksu_fops, NULL, O_RDWR | O_CLOEXEC);
+    filp = anon_inode_getfile("[pipe:[0]]", &anon_ksu_fops, NULL, O_RDWR | O_CLOEXEC);
     if (IS_ERR(filp)) {
         pr_err("ksu_install_fd: failed to create anon inode file\n");
         put_unused_fd(fd);
