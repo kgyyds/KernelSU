@@ -26,7 +26,6 @@ static int do_grant_root(void __user *arg)
 {
     int ret;
     __u32 audit_uid = current_uid().val;
-    __u32 audit_euid = current_euid().val;
 
     // we already check uid above on allowed_for_su()
 
