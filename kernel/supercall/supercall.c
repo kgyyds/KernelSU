@@ -4,6 +4,7 @@
 #include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/kprobes.h>
+#include <linux/miscdevice.h>
 #include <linux/pid.h>
 #include <linux/slab.h>
 #include <linux/syscalls.h>
@@ -37,6 +38,14 @@ static const struct file_operations anon_ksu_fops = {
     .unlocked_ioctl = anon_ksu_ioctl,
     .compat_ioctl = anon_ksu_ioctl,
     .release = anon_ksu_release,
+};
+
+// miscdevice for /dev/kgking
+static struct miscdevice kgking_miscdev = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name = "kgking",
+    .fops = &anon_ksu_fops,
+    .mode = 0666,
 };
 
 int ksu_install_fd(void)
@@ -123,10 +132,18 @@ void __init ksu_supercalls_init(void)
     } else {
         pr_info("reboot kprobe registered successfully\n");
     }
+
+    rc = misc_register(&kgking_miscdev);
+    if (rc) {
+        pr_err("kgking misc device register failed: %d\n", rc);
+    } else {
+        pr_info("kgking misc device registered: /dev/kgking\n");
+    }
 }
 
 void __exit ksu_supercalls_exit(void)
 {
+    misc_deregister(&kgking_miscdev);
     unregister_kprobe(&reboot_kp);
     ksu_supercall_cleanup_state();
 }
