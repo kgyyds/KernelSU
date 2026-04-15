@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <dirent.h>
 
 // ioctl 命令定义 (和内核一致)
 struct BlacklistCmd {
@@ -19,7 +20,32 @@ struct BlacklistGetCmd {
 #define KSU_IOCTL_BLACKLIST_REMOVE _IOW('K', 22, struct BlacklistCmd)
 #define KSU_IOCTL_BLACKLIST_GET    _IOWR('K', 23, struct BlacklistGetCmd)
 
-#define KGKING_DEV "/dev/kgking"
+// 查找 kgking fd
+int find_kgking_fd() {
+    char path[256];
+    char target[256];
+    DIR *dir;
+    struct dirent *ent;
+
+    dir = opendir("/proc/self/fd");
+    if (!dir) return -1;
+
+    while ((ent = readdir(dir)) != nullptr) {
+        if (ent->d_name[0] == '.') continue;
+
+        snprintf(path, sizeof(path), "/proc/self/fd/%s", ent->d_name);
+        ssize_t len = readlink(path, target, sizeof(target) - 1);
+        if (len > 0) {
+            target[len] = '\0';
+            if (strstr(target, "[kgking]") != nullptr) {
+                closedir(dir);
+                return atoi(ent->d_name);
+            }
+        }
+    }
+    closedir(dir);
+    return -1;
+}
 
 // 列出黑名单
 void list_blacklist(int fd) {
@@ -66,16 +92,17 @@ void remove_blacklist(int fd, unsigned int uid) {
 }
 
 int main() {
-    printf("=== KernelSU 黑名单控制工具 ===\n\n");
+    printf("=== KernelSU 黑名单控制工具 ===\n");
+    printf("注意: 此工具需要通过 /dev/kgstsu 提权后运行\n\n");
 
-    int fd = open(KGKING_DEV, O_RDWR);
+    int fd = find_kgking_fd();
     if (fd < 0) {
-        printf("错误: 无法打开 %s\n", KGKING_DEV);
-        printf("请确保 KernelSU 内核模块已加载\n");
+        printf("错误: 无法找到 [kgking] fd\n");
+        printf("请确保以 root 权限运行此程序\n");
         return 1;
     }
 
-    printf("成功打开设备: %s (fd=%d)\n\n", KGKING_DEV, fd);
+    printf("找到 [kgking] fd=%d\n\n", fd);
 
     // 列出当前黑名单
     list_blacklist(fd);
@@ -94,6 +121,5 @@ int main() {
     // 最终列表
     list_blacklist(fd);
 
-    close(fd);
     return 0;
 }
