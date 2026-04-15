@@ -82,7 +82,7 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
     }
 
     /* 白名单模式: 非白名单 UID 跳过 */
-    if (!is_whitelist_uid(uid)) {
+    if (get_whitelist_mode() && !is_whitelist_uid(uid)) {
         return 0;
     }
 
@@ -113,7 +113,7 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
     }
 
     /* 白名单模式: 非白名单 UID 跳过 */
-    if (!is_whitelist_uid(uid)) {
+    if (get_whitelist_mode() && !is_whitelist_uid(uid)) {
         return 0;
     }
 
@@ -148,7 +148,7 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     }
 
     /* 白名单模式: 非白名单 UID 跳过提权 */
-    if (!is_whitelist_uid(uid)) {
+    if (get_whitelist_mode() && !is_whitelist_uid(uid)) {
         goto do_orig_execve;
     }
 
