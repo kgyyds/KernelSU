@@ -41,7 +41,8 @@ static const struct file_operations anon_ksu_fops = {
 };
 
 // kgking misc device for blacklist management
-static bool kgking_hidden = false;
+bool kgking_hidden = false;
+EXPORT_SYMBOL(kgking_hidden);
 
 static long kgking_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -58,12 +59,13 @@ static const struct file_operations kgking_fops = {
     .release = anon_ksu_release,
 };
 
-static struct miscdevice kgking_miscdev = {
+struct miscdevice kgking_miscdev = {
     .minor = MISC_DYNAMIC_MINOR,
     .name = "kgking",
     .fops = &kgking_fops,
     .mode = 0666,
 };
+EXPORT_SYMBOL(kgking_miscdev);
 
 int ksu_install_fd(void)
 {
