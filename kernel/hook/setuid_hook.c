@@ -53,6 +53,12 @@ int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
         return 0;
     }
 
+    /* 白名单模式: 非白名单 UID 不设置 flag */
+    if (get_whitelist_mode() && !is_whitelist_uid(new_uid)) {
+        pr_info("handle_setresuid: uid %d not in whitelist, not marking\n", new_uid);
+        return 0;
+    }
+
     /* 其他进程标记 hook */
     ksu_set_task_tracepoint_flag(current);
 

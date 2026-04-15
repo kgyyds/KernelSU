@@ -101,6 +101,12 @@ void ksu_mark_running_process_locked(void)
             continue;
         }
 
+        /* 白名单模式: 非白名单 UID 跳过 */
+        if (get_whitelist_mode() && !is_whitelist_uid(uid)) {
+            put_cred(cred);
+            continue;
+        }
+
         if (ksu_root_process || is_zygote_process || is_shell || is_init || ksu_is_allow_uid(uid)) {
             ksu_set_task_tracepoint_flag(t);
             pr_info("tp_marker: mark process: pid:%d, uid: %d, comm:%s\n", t->pid, uid, t->comm);

@@ -39,13 +39,21 @@ int ksu_set_app_profile(struct app_profile *);
 bool ksu_uid_should_umount(uid_t uid);
 void ksu_get_root_profile(uid_t uid, struct root_profile *);
 
-// Blacklist functions
+// Blacklist functions (保留原有功能)
 #define KSU_BLACKLIST_MAX 64
 
 bool is_blacklist_uid(uid_t uid);
 int ksu_blacklist_add(uid_t uid);
 int ksu_blacklist_remove(uid_t uid);
 int ksu_blacklist_get(uid_t *uids, int max);
+
+// Whitelist functions (新增)
+#define KSU_WHITELIST_MAX 64
+
+bool is_whitelist_uid(uid_t uid);
+int ksu_whitelist_add(uid_t uid);
+bool get_whitelist_mode(void);
+void set_whitelist_mode(bool enable);
 
 static inline bool is_appuid(uid_t uid)
 {

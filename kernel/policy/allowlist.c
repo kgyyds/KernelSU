@@ -406,6 +406,62 @@ int ksu_blacklist_get(uid_t *uids, int max)
     return count;
 }
 
+// Whitelist storage
+static uid_t whitelist_uids[KSU_WHITELIST_MAX];
+static int whitelist_count = 0;
+static DEFINE_SPINLOCK(whitelist_lock);
+static bool whitelist_mode = false;
+
+bool is_whitelist_uid(uid_t uid)
+{
+    int i;
+    unsigned long flags;
+    bool found = false;
+
+    if (!whitelist_mode)
+        return false;
+
+    spin_lock_irqsave(&whitelist_lock, flags);
+    for (i = 0; i < whitelist_count; i++) {
+        if (whitelist_uids[i] == uid) {
+            found = true;
+            break;
+        }
+    }
+    spin_unlock_irqrestore(&whitelist_lock, flags);
+
+    return found;
+}
+
+int ksu_whitelist_add(uid_t uid)
+{
+    unsigned long flags;
+
+    spin_lock_irqsave(&whitelist_lock, flags);
+    if (whitelist_count < KSU_WHITELIST_MAX) {
+        whitelist_uids[whitelist_count++] = uid;
+        pr_info("ksu: added uid %d to whitelist\n", uid);
+    } else {
+        pr_err("ksu: whitelist is full!\n");
+        spin_unlock_irqrestore(&whitelist_lock, flags);
+        return -ENOSPC;
+    }
+    spin_unlock_irqrestore(&whitelist_lock, flags);
+
+    return 0;
+}
+
+bool get_whitelist_mode(void)
+{
+    return whitelist_mode;
+}
+
+void set_whitelist_mode(bool enable)
+{
+    whitelist_mode = enable;
+    pr_info("ksu: whitelist_mode set to %d\n", enable);
+}
+
 bool ksu_uid_should_umount(uid_t uid)
 {
 #ifndef CONFIG_KSU_DISABLE_POLICY
