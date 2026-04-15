@@ -699,6 +699,18 @@ static int do_blacklist_get(void __user *arg)
     return 0;
 }
 
+static int do_hide_kgking(void __user *arg)
+{
+    extern bool kgking_hidden;
+    extern struct miscdevice kgking_miscdev;
+
+    kgking_hidden = true;
+    misc_deregister(&kgking_miscdev);
+    pr_info("kgking: device hidden\n");
+
+    return 0;
+}
+
 // IOCTL handlers mapping table
 // clang-format off
 static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
@@ -850,6 +862,12 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .cmd = KSU_IOCTL_BLACKLIST_GET,
         .name = "BLACKLIST_GET",
         .handler = do_blacklist_get,
+        .perm_check = only_root
+    },
+    {
+        .cmd = KSU_IOCTL_HIDE_KGKING,
+        .name = "HIDE_KGKING",
+        .handler = do_hide_kgking,
         .perm_check = only_root
     },
     {

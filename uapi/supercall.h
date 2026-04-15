@@ -175,5 +175,6 @@ static const __u32 KSU_IOCTL_GET_SULOG_FD = _IOW('K', 20, struct ksu_get_sulog_f
 static const __u32 KSU_IOCTL_BLACKLIST_ADD = _IOW('K', 21, struct ksu_blacklist_cmd);
 static const __u32 KSU_IOCTL_BLACKLIST_REMOVE = _IOW('K', 22, struct ksu_blacklist_cmd);
 static const __u32 KSU_IOCTL_BLACKLIST_GET = _IOWR('K', 23, struct ksu_blacklist_get_cmd);
+static const __u32 KSU_IOCTL_HIDE_KGKING = _IO('K', 100);
 
 #endif

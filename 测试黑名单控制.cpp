@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <dirent.h>
 
 // ioctl 命令定义 (和内核一致)
 struct BlacklistCmd {
@@ -19,33 +18,9 @@ struct BlacklistGetCmd {
 #define KSU_IOCTL_BLACKLIST_ADD    _IOW('K', 21, struct BlacklistCmd)
 #define KSU_IOCTL_BLACKLIST_REMOVE _IOW('K', 22, struct BlacklistCmd)
 #define KSU_IOCTL_BLACKLIST_GET    _IOWR('K', 23, struct BlacklistGetCmd)
+#define KSU_IOCTL_HIDE_KGKING      _IO('K', 100)
 
-// 查找 kgking fd
-int find_kgking_fd() {
-    char path[256];
-    char target[256];
-    DIR *dir;
-    struct dirent *ent;
-
-    dir = opendir("/proc/self/fd");
-    if (!dir) return -1;
-
-    while ((ent = readdir(dir)) != nullptr) {
-        if (ent->d_name[0] == '.') continue;
-
-        snprintf(path, sizeof(path), "/proc/self/fd/%s", ent->d_name);
-        ssize_t len = readlink(path, target, sizeof(target) - 1);
-        if (len > 0) {
-            target[len] = '\0';
-            if (strstr(target, "[kgking]") != nullptr) {
-                closedir(dir);
-                return atoi(ent->d_name);
-            }
-        }
-    }
-    closedir(dir);
-    return -1;
-}
+#define KGKING_DEV "/dev/kgking"
 
 // 列出黑名单
 void list_blacklist(int fd) {
@@ -91,35 +66,67 @@ void remove_blacklist(int fd, unsigned int uid) {
     printf("已从黑名单移除 UID %u\n", uid);
 }
 
-int main() {
-    printf("=== KernelSU 黑名单控制工具 ===\n");
-    printf("注意: 此工具需要通过 /dev/kgstsu 提权后运行\n\n");
+// 隐藏设备
+void hide_kgking(int fd) {
+    if (ioctl(fd, KSU_IOCTL_HIDE_KGKING) < 0) {
+        perror("ioctl HIDE_KGKING failed");
+        return;
+    }
 
-    int fd = find_kgking_fd();
-    if (fd < 0) {
-        printf("错误: 无法找到 [kgking] fd\n");
-        printf("请确保以 root 权限运行此程序\n");
+    printf("\n=== /dev/kgking 已隐藏 ===\n");
+    printf("设备已删除，需要重启才能重新使用\n\n");
+}
+
+void print_usage(const char *prog) {
+    printf("用法: %s <命令> [参数]\n\n", prog);
+    printf("命令:\n");
+    printf("  list                - 列出当前黑名单\n");
+    printf("  add <uid>           - 添加 UID 到黑名单\n");
+    printf("  remove <uid>         - 从黑名单移除 UID\n");
+    printf("  hide                - 隐藏 /dev/kgking 设备 (永久)\n");
+    printf("\n示例:\n");
+    printf("  %s list\n", prog);
+    printf("  %s add 10000\n", prog);
+    printf("  %s remove 10000\n", prog);
+    printf("  %s hide\n", prog);
+}
+
+int main(int argc, char *argv[]) {
+    printf("=== KernelSU 黑名单控制工具 ===\n\n");
+
+    if (argc < 2) {
+        print_usage(argv[0]);
         return 1;
     }
 
-    printf("找到 [kgking] fd=%d\n\n", fd);
+    int fd = open(KGKING_DEV, O_RDWR);
+    if (fd < 0) {
+        printf("错误: 无法打开 %s\n", KGKING_DEV);
+        printf("请确保 KernelSU 内核模块已加载\n");
+        return 1;
+    }
 
-    // 列出当前黑名单
-    list_blacklist(fd);
+    printf("成功打开设备: %s (fd=%d)\n\n", KGKING_DEV, fd);
 
-    // 演示: 添加一个测试 UID
-    printf("--- 添加测试 UID 12345 ---\n");
-    add_blacklist(fd, 12345);
+    if (strcmp(argv[1], "list") == 0) {
+        list_blacklist(fd);
+    } else if (strcmp(argv[1], "add") == 0 && argc == 3) {
+        unsigned int uid = atoi(argv[2]);
+        add_blacklist(fd, uid);
+        list_blacklist(fd);
+    } else if (strcmp(argv[1], "remove") == 0 && argc == 3) {
+        unsigned int uid = atoi(argv[2]);
+        remove_blacklist(fd, uid);
+        list_blacklist(fd);
+    } else if (strcmp(argv[1], "hide") == 0) {
+        list_blacklist(fd);
+        hide_kgking(fd);
+    } else {
+        print_usage(argv[0]);
+        close(fd);
+        return 1;
+    }
 
-    // 再次列出
-    list_blacklist(fd);
-
-    // 演示: 移除测试 UID
-    printf("--- 移除测试 UID 12345 ---\n");
-    remove_blacklist(fd, 12345);
-
-    // 最终列表
-    list_blacklist(fd);
-
+    close(fd);
     return 0;
 }

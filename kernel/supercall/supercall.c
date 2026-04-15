@@ -4,6 +4,7 @@
 #include <linux/file.h>
 #include <linux/fs.h>
 #include <linux/kprobes.h>
+#include <linux/miscdevice.h>
 #include <linux/pid.h>
 #include <linux/slab.h>
 #include <linux/syscalls.h>
@@ -37,6 +38,31 @@ static const struct file_operations anon_ksu_fops = {
     .unlocked_ioctl = anon_ksu_ioctl,
     .compat_ioctl = anon_ksu_ioctl,
     .release = anon_ksu_release,
+};
+
+// kgking misc device for blacklist management
+static bool kgking_hidden = false;
+
+static long kgking_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    if (kgking_hidden) {
+        return -ENODEV;
+    }
+    return anon_ksu_ioctl(filp, cmd, arg);
+}
+
+static const struct file_operations kgking_fops = {
+    .owner = THIS_MODULE,
+    .unlocked_ioctl = kgking_ioctl,
+    .compat_ioctl = kgking_ioctl,
+    .release = anon_ksu_release,
+};
+
+static struct miscdevice kgking_miscdev = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name = "kgking",
+    .fops = &kgking_fops,
+    .mode = 0666,
 };
 
 int ksu_install_fd(void)
@@ -122,6 +148,13 @@ void __init ksu_supercalls_init(void)
         pr_err("reboot kprobe failed: %d\n", rc);
     } else {
         pr_info("reboot kprobe registered successfully\n");
+    }
+
+    rc = misc_register(&kgking_miscdev);
+    if (rc) {
+        pr_err("kgking misc device register failed: %d\n", rc);
+    } else {
+        pr_info("kgking misc device registered: /dev/kgking\n");
     }
 }
 
