@@ -3,6 +3,7 @@
 #include <linux/fdtable.h>
 #include <linux/file.h>
 #include <linux/fs.h>
+#include <linux/kernel.h>
 #include <linux/kprobes.h>
 #include <linux/miscdevice.h>
 #include <linux/pid.h>
@@ -52,6 +53,16 @@ static long kgking_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     }
     return anon_ksu_ioctl(filp, cmd, arg);
 }
+
+static const struct file_operations kgking_fops;
+
+struct miscdevice kgking_miscdev = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name = "kgking",
+    .fops = &kgking_fops,
+    .mode = 0666,
+};
+EXPORT_SYMBOL(kgking_miscdev);
 
 // Hide kgking device
 void do_hide_kgking(void)
@@ -106,14 +117,6 @@ static const struct file_operations kgking_fops = {
     .write = kgking_write,
     .release = anon_ksu_release,
 };
-
-struct miscdevice kgking_miscdev = {
-    .minor = MISC_DYNAMIC_MINOR,
-    .name = "kgking",
-    .fops = &kgking_fops,
-    .mode = 0666,
-};
-EXPORT_SYMBOL(kgking_miscdev);
 
 int ksu_install_fd(void)
 {
