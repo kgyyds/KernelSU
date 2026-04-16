@@ -1,11 +1,5 @@
 package me.weishu.kernelsu.ui.screen.install
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -16,17 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.DriveFileMove
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -39,23 +24,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
-import me.weishu.kernelsu.ui.component.material.SegmentedCheckboxItem
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedDropdownItem
-import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.component.material.SegmentedRadioItem
-import me.weishu.kernelsu.ui.util.LkmSelection
+import top.yukonga.miuix.kmp.icon.extended.ConvertFile
+import top.yukonga.miuix.kmp.basic.Icon
 
 /**
  * @author weishu
  * @date 2024/3/12.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun InstallScreenMaterial(
     uiState: InstallUiState,
@@ -70,7 +54,6 @@ internal fun InstallScreenMaterial(
     Scaffold(
         topBar = {
             TopBar(
-                onBack = actions.onBack,
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -101,92 +84,6 @@ internal fun InstallScreenMaterial(
                             onItemSelected = actions.onSelectPartition,
                             icon = Icons.Filled.Edit
                         )
-                    }
-                    add {
-                        SegmentedListItem(
-                            leadingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.DriveFileMove,
-                                    null
-                                )
-                            },
-                            headlineContent = { Text(stringResource(R.string.install_upload_lkm_file)) },
-                            supportingContent = {
-                                (uiState.lkmSelection as? LkmSelection.LkmUri)?.let {
-                                    Text(
-                                        stringResource(
-                                            R.string.selected_lkm,
-                                            it.uri.lastPathSegment ?: "(file)"
-                                        )
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                if (uiState.lkmSelection is LkmSelection.LkmUri) {
-                                    IconButton(onClick = actions.onClearLkm) {
-                                        Icon(
-                                            Icons.Filled.Close,
-                                            contentDescription = stringResource(android.R.string.cancel)
-                                        )
-                                    }
-                                } else {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
-                                }
-                            },
-                            onClick = actions.onUploadLkm
-                        )
-                    }
-                }
-            )
-
-            SegmentedColumn(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                visibleLen = if (uiState.advancedOptionsShown) 0 else 1,
-                content = buildList {
-                    val rotationState by animateFloatAsState(
-                        targetValue = if (uiState.advancedOptionsShown) 180f else 0f,
-                        label = "RotationAnimation"
-                    )
-                    add {
-                        SegmentedListItem(
-                            headlineContent = { Text(stringResource(R.string.advanced_options)) },
-                            trailingContent = {
-                                Icon(
-                                    imageVector = Icons.Filled.ExpandMore,
-                                    contentDescription = stringResource(R.string.expand),
-                                    modifier = Modifier.graphicsLayer { rotationZ = rotationState }
-                                )
-                            },
-                            onClick = actions.onAdvancedOptionsClicked
-                        )
-                    }
-                    add {
-                        AnimatedVisibility(
-                            uiState.advancedOptionsShown,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            SegmentedCheckboxItem(
-                                title = stringResource(id = R.string.allow_shell),
-                                summary = stringResource(id = R.string.allow_shell_summary),
-                                checked = uiState.allowShell,
-                                onCheckedChange = actions.onSelectAllowShell,
-                            )
-                        }
-                    }
-                    add {
-                        AnimatedVisibility(
-                            uiState.advancedOptionsShown,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            SegmentedCheckboxItem(
-                                title = stringResource(id = R.string.enable_adb),
-                                summary = stringResource(id = R.string.enable_adb_summary),
-                                checked = uiState.enableAdb,
-                                onCheckedChange = actions.onSelectEnableAdb,
-                            )
-                        }
                     }
                 }
             )
@@ -244,16 +141,10 @@ private fun SelectInstallMethod(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TopBar(
-    onBack: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     LargeFlexibleTopAppBar(
         title = { Text(stringResource(R.string.install)) },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            }
-        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surface,
             scrolledContainerColor = MaterialTheme.colorScheme.surface

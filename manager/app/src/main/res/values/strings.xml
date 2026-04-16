@@ -54,7 +54,7 @@
     <string name="confirm">Confirm</string>
     <string name="uninstall">Uninstall</string>
     <string name="module_install">Install</string>
-    <string name="install">Install</string>
+    <string name="install">KING内核刷写工具</string>
     <string name="reboot">Reboot</string>
     <string name="settings">Settings</string>
     <string name="reboot_soft">Soft restart</string>
