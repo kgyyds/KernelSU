@@ -5,12 +5,8 @@ import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.UserManager
 import android.system.Os
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
-import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
-import okhttp3.Cache
-import okhttp3.OkHttpClient
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 import java.io.File
 import java.util.Locale
@@ -30,7 +26,6 @@ class KernelSUApplication : Application(), ViewModelStoreOwner {
         }
     }
 
-    lateinit var okhttpClient: OkHttpClient
     private val appViewModelStore by lazy { ViewModelStore() }
 
     private fun isUserUnlocked(): Boolean =
@@ -51,9 +46,6 @@ class KernelSUApplication : Application(), ViewModelStoreOwner {
             setEnableOnBackInvokedCallback(applicationInfo, enable)
         }
 
-        val superUserViewModel = ViewModelProvider(this)[SuperUserViewModel::class.java]
-        superUserViewModel.loadAppList()
-
         val webroot = File(dataDir, "webroot")
         if (!webroot.exists()) {
             webroot.mkdir()
@@ -61,16 +53,6 @@ class KernelSUApplication : Application(), ViewModelStoreOwner {
 
         // Provide working env for rust's temp_dir()
         Os.setenv("TMPDIR", cacheDir.absolutePath, true)
-
-        okhttpClient =
-            OkHttpClient.Builder().cache(Cache(File(cacheDir, "okhttp"), 10 * 1024 * 1024))
-                .addInterceptor { block ->
-                    block.proceed(
-                        block.request().newBuilder()
-                            .header("User-Agent", "KernelSU/${BuildConfig.VERSION_CODE}")
-                            .header("Accept-Language", Locale.getDefault().toLanguageTag()).build()
-                    )
-                }.build()
     }
 
     override val viewModelStore: ViewModelStore

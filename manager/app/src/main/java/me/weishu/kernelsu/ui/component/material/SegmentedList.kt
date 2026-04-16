@@ -225,41 +225,6 @@ fun SegmentedListItem(
 }
 
 @Composable
-fun SegmentedSwitchItem(
-    icon: ImageVector? = null,
-    title: String,
-    summary: String? = null,
-    colors: ListItemColors = defaultSegmentedColors(),
-    checked: Boolean,
-    enabled: Boolean = true,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    val haptic = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-
-    SegmentedListItem(
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
-            onCheckedChange(!checked)
-        },
-        enabled = enabled,
-        interactionSource = interactionSource,
-        colors = colors,
-        headlineContent = { Text(title) },
-        leadingContent = icon?.let { { Icon(it, title) } },
-        trailingContent = {
-            ExpressiveSwitch(
-                checked = checked,
-                enabled = enabled,
-                onCheckedChange = null,
-                interactionSource = interactionSource,
-            )
-        },
-        supportingContent = summary?.let { { Text(it) } }
-    )
-}
-
-@Composable
 fun SegmentedDropdownItem(
     icon: ImageVector? = null,
     title: String,

@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowInsetsControllerCompat
 import com.materialkolor.rememberDynamicColorScheme
-import me.weishu.kernelsu.ui.webui.MonetColorsProvider
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -65,9 +64,6 @@ fun MaterialKernelSUTheme(
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         motionScheme = MotionScheme.expressive(),
-        content = {
-            MonetColorsProvider.UpdateCss()
-            content()
-        }
+        content = content
     )
 }
