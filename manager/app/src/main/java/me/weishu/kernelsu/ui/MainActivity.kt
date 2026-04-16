@@ -1,7 +1,6 @@
 package me.weishu.kernelsu.ui
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -11,16 +10,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import me.weishu.kernelsu.Natives
-import me.weishu.kernelsu.ui.navigation3.HandleDeepLink
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.ui.navigation3.Navigator
 import me.weishu.kernelsu.ui.navigation3.Route
@@ -36,8 +31,6 @@ import me.weishu.kernelsu.ui.util.install
 import top.yukonga.miuix.kmp.basic.Scaffold
 
 class MainActivity : ComponentActivity() {
-
-    private val intentState = mutableStateOf(0)
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,8 +74,6 @@ class MainActivity : ComponentActivity() {
                 LocalUiMode provides uiMode,
             ) {
                 KernelSUTheme(appSettings = null, uiMode = uiMode) {
-                    HandleDeepLink(intentState.collectAsStateWithLifecycle())
-
                     val navDisplay = @Composable {
                         NavDisplay(
                             backStack = navigator.backStack,
@@ -101,11 +92,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        intentState.value += 1
     }
 }

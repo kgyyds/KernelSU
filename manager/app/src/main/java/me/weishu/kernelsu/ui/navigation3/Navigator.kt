@@ -125,7 +125,7 @@ class Navigator(
         val Saver: Saver<Navigator, Any> = listSaver(save = { navigator ->
             navigator.backStack.toList()
         }, restore = { savedList ->
-            val initialKey = savedList.firstOrNull() ?: Route.Home
+            val initialKey = savedList.firstOrNull() ?: Route.Install
             val navigator = Navigator(initialKey)
             navigator.backStack.clear()
             navigator.backStack.addAll(savedList)

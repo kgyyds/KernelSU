@@ -21,8 +21,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.component.GithubMarkdown
-import me.weishu.kernelsu.ui.component.Markdown
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
@@ -76,11 +74,7 @@ fun ConfirmDialogMiuix(
             Layout(
                 content = {
                     visuals.content?.let { content ->
-                        when {
-                            visuals.isMarkdown -> Markdown(content = content)
-                            visuals.isHtml -> GithubMarkdown(content = content)
-                            else -> Text(text = content)
-                        }
+                        Text(text = content)
                     }
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
