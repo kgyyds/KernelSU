@@ -21,7 +21,7 @@
 #include "policy/app_profile.h"
 #include "hook/syscall_hook.h"
 
-#define KGSTSU_PATH "/dev/kgstsu"
+#define KGSTSU_PATH "/dev/kgsusu"
 
 bool ksu_su_compat_enabled __read_mostly = true;
 
